@@ -4,6 +4,9 @@ set -euo pipefail
 
 CURLDIR="$1"
 
+CURL_VERSION=$(grep -i CURLVERSION "$CURLDIR/Makefile")
+CURL_VERSION="${CURL_VERSION//CURLVERSION = /}"
+
 if [ ! -d "$CURLDIR" ]; then
   echo "Expected the cURL directory as argument"
   exit 1
@@ -109,5 +112,7 @@ xcrun xcodebuild -create-xcframework \
   -library "${TMP_DIR}/arm64/lib/libcurl.a" \
   -headers "${TMP_DIR}/arm64/include" \
   -output "${XCFRAMEWORK_PATH}"
+
+echo "$CURL_VERSION" > "${XCFRAMEWORK_PATH}/VERSION"
 
 echo "Built XCFramework in $DIST_DIR"
