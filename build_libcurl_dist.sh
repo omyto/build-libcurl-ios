@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-readonly XCODE_DEV="$(xcode-select -p)"
-
 CURLDIR="$1"
 
 if [ ! -d "$CURLDIR" ]; then
@@ -11,11 +9,18 @@ if [ ! -d "$CURLDIR" ]; then
   exit 1
 fi
 
-DFT_DIST_DIR=${HOME}/Desktop/libcurl-ios-dist
+CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+DFT_DIST_DIR="${CURRENT_DIR}/dist"
 DIST_DIR=${DIST_DIR:-$DFT_DIST_DIR}
 
-IPHONEOS_DEPLOYMENT_TARGET="12.0"
+XCFRAMEWORK_PATH="$DIST_DIR/curl.xcframework"
+
+IPHONEOS_DEPLOYMENT_TARGET="13.0"
 TMP_DIR="$(mktemp -d)"
+
+# Remove any already existing .xcframework from the DIST_DIR
+rm -f "$XCFRAMEWORK_PATH"
 
 function build_for_arch() {
   ARCH=$1
@@ -23,17 +28,26 @@ function build_for_arch() {
   PLATFORM=$3
 
   SDKROOT="$(xcrun --sdk "$PLATFORM" --show-sdk-path)"
-  export CC="$(xcrun -f clang)"
-  export CFLAGS="-Os -arch ${ARCH} -pipe -miphoneos-version-min=${IPHONEOS_DEPLOYMENT_TARGET} -isysroot ${SDKROOT}"
+  CC="$(xcrun -f clang)"
+  CPP="$CC -E"
+  export CC
+  export CPP
+  export CFLAGS="-Os -miphoneos-version-min=${IPHONEOS_DEPLOYMENT_TARGET} -isysroot ${SDKROOT}"
+  export CPPFLAGS="-arch ${ARCH} -I${SDKROOT}/usr/include"
   export LDFLAGS="-arch ${ARCH} -isysroot ${SDKROOT}"
+
   PREFIX="${TMP_DIR}/${ARCH}"
 
-  echo "BUILDING FOR ARCH ${ARCH}"
+  make clean
+
+  echo "BUILDING FOR ${PLATFORM}"
+  echo "  ARCH = ${ARCH}"
   echo "  HOST = ${HOST}"
   echo "  SDKROOT = ${SDKROOT}"
   echo ""
 
   ./configure \
+    --disable-dependency-tracking \
     --disable-shared \
     --enable-static \
     \
@@ -85,14 +99,15 @@ cd "${CURLDIR}"
 build_for_arch x86_64 x86_64-apple-darwin iphonesimulator || exit 2
 build_for_arch arm64 arm-apple-darwin iphoneos || exit 3
 
-mkdir -p "${TMP_DIR}/lib/"
+# Ensure the two generated 'include' directories are identical
+if ! diff -r "${TMP_DIR}"/{x86_64,arm64}/include > /dev/null 2>&1 ; then
+    echo "The generated /include directories are not identical"
+fi
 
-xcrun lipo \
-	-arch x86_64 "${TMP_DIR}/x86_64/lib/libcurl.a" \
-	-arch arm64 "${TMP_DIR}/arm64/lib/libcurl.a" \
-	-output "${TMP_DIR}/lib/libcurl.a" -create
+xcrun xcodebuild -create-xcframework \
+  -library "${TMP_DIR}/x86_64/lib/libcurl.a" \
+  -library "${TMP_DIR}/arm64/lib/libcurl.a" \
+  -headers "${TMP_DIR}/arm64/include" \
+  -output "${XCFRAMEWORK_PATH}"
 
-cp -r "${TMP_DIR}/arm64/include" "${TMP_DIR}/"
-
-mkdir -p "${DIST_DIR}"
-cp -r "${TMP_DIR}/include" "${TMP_DIR}/lib" "${DIST_DIR}"
+echo "Built XCFramework in $DIST_DIR"
