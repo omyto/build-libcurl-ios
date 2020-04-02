@@ -20,7 +20,7 @@ IPHONEOS_DEPLOYMENT_TARGET="13.0"
 TMP_DIR="$(mktemp -d)"
 
 # Remove any already existing .xcframework from the DIST_DIR
-rm -f "$XCFRAMEWORK_PATH"
+rm -rf "$XCFRAMEWORK_PATH"
 
 function build_for_arch() {
   ARCH=$1
