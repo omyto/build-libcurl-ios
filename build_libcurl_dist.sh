@@ -1,16 +1,26 @@
 #!/bin/bash
 
+# Configuration ###############################################################
+
+# Each slice must follow the format "ARCH HOST PLATFORM"
+SLICES=(
+  "x86_64 x86_64-apple-darwin iphonesimulator"
+  "arm64 arm-apple-darwin iphoneos"
+)
+
+###############################################################################
+
+CURLDIR="${1:-}"
+
 set -euo pipefail
-
-CURLDIR="$1"
-
-CURL_VERSION=$(grep -i CURLVERSION "$CURLDIR/Makefile")
-CURL_VERSION="${CURL_VERSION//CURLVERSION = /}"
 
 if [ ! -d "$CURLDIR" ]; then
   echo "Expected the cURL directory as argument"
   exit 1
 fi
+
+CURL_VERSION=$(grep -i CURLVERSION "$CURLDIR/Makefile")
+CURL_VERSION="${CURL_VERSION//CURLVERSION = /}"
 
 CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
@@ -99,18 +109,28 @@ function build_for_arch() {
 
 cd "${CURLDIR}"
 
-build_for_arch x86_64 x86_64-apple-darwin iphonesimulator || exit 2
-build_for_arch arm64 arm-apple-darwin iphoneos || exit 3
+LIB_ARGS=()
+for SLICE in "${SLICES[@]}"; do
+  read -r -a SLICE <<< "$SLICE"
+  ARCH="${SLICE[0]}"
+  HOST="${SLICE[1]}"
+  PLATFORM="${SLICE[2]}"
+  build_for_arch "$ARCH" "$HOST" "$PLATFORM" || exit 1
+
+  LIB_ARGS+=('-library' "${TMP_DIR}/${ARCH}/lib/libcurl.a")
+done
 
 # Ensure the two generated 'include' directories are identical
 if ! diff -r "${TMP_DIR}"/{x86_64,arm64}/include > /dev/null 2>&1 ; then
-    echo "The generated /include directories are not identical"
+    echo "Error: The generated /include directories are not identical"
+    exit 2
 fi
 
+echo
+
 xcrun xcodebuild -create-xcframework \
-  -library "${TMP_DIR}/x86_64/lib/libcurl.a" \
-  -library "${TMP_DIR}/arm64/lib/libcurl.a" \
-  -headers "${TMP_DIR}/arm64/include" \
+  "${LIB_ARGS[@]}" \
+  -headers "${TMP_DIR}/${SLICE[0]}/include" \
   -output "${XCFRAMEWORK_PATH}"
 
 echo "$CURL_VERSION" > "${XCFRAMEWORK_PATH}/VERSION"
