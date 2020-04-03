@@ -133,6 +133,16 @@ xcrun xcodebuild -create-xcframework \
   -headers "${TMP_DIR}/${SLICE[0]}/include" \
   -output "${XCFRAMEWORK_PATH}"
 
+# Fix the 'Headers' directory location in the xcframework, and update the
+# Info.plist accordingly for all slices.
+XCFRAMEWORK_HEADERS_PATH=$(find "${XCFRAMEWORK_PATH}" -name 'Headers')
+mv "$XCFRAMEWORK_HEADERS_PATH" "$XCFRAMEWORK_PATH"
+
+for I in $(seq 0 $((${#SLICES[@]} - 1))); do
+  plutil -replace "AvailableLibraries.$I.HeadersPath" -string '../Headers' "$XCFRAMEWORK_PATH/Info.plist"
+done
+
+
 echo "$CURL_VERSION" > "${XCFRAMEWORK_PATH}/VERSION"
 
 echo "Built XCFramework in $DIST_DIR"
