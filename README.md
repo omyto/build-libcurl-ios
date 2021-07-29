@@ -5,20 +5,20 @@ This script will generate a XCFramework with embedded static libraries for arm64
 
 The SSL library used is SecureTransport.
 
-Script only, please download libcurl from here: http://curl.haxx.se/download.html
+Script only, please download libcurl from here: https://curl.se/download.html
 
 Tested with:
 
-- Xcode 11.4
-- macOS 10.15.3
-- curl 7.69.1
+- Xcode 12.5
+- macOS 11.4
+- curl 7.78.0
 
 # Usage
 
 ```bash
-curl -O https://curl.haxx.se/download/curl-7.69.1.tar.gz
-tar xf curl-7.69.1.tar.gz
-bash build_libcurl_dist.sh curl-7.69.1
+curl -O https://curl.se/download/curl-7.78.0.tar.gz
+tar xf curl-7.78.0.tar.gz
+bash build_libcurl_dist.sh curl-7.78.0
 ```
 
 The resulting `curl.xcframework` will be created in a `dist` directory in the current directory.
