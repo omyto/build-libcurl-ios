@@ -9,16 +9,16 @@ Script only, please download libcurl from here: https://curl.se/download.html
 
 Tested with:
 
-- Xcode 12.5
-- macOS 11.4
-- curl 7.78.0
+- Xcode 13.3
+- macOS 12.2
+- curl 7.82.0
 
 # Usage
 
 ```bash
-curl -O https://curl.se/download/curl-7.78.0.tar.gz
-tar xf curl-7.78.0.tar.gz
-bash build_libcurl_dist.sh curl-7.78.0
+curl -O https://curl.se/download/curl-7.82.0.tar.gz
+tar xf curl-7.82.0.tar.gz
+bash build_libcurl_dist.sh curl-7.82.0
 ```
 
 The resulting `curl.xcframework` will be created in a `dist` directory in the current directory.
